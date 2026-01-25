@@ -38,5 +38,5 @@ dependencies {
     implementation("androidx.compose.ui:ui-tooling-preview:1.6.1")
     implementation("com.google.code.gson:gson:2.10.1")
 
-    implementation("com.pubnub:pubnub-kotlin:8.1.0")
+    implementation("com.pubnub:pubnub-kotlin:12.1.4")
 }
