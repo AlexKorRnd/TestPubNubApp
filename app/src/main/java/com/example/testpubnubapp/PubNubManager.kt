@@ -1,8 +1,8 @@
 package com.example.testpubnubapp
 
 import com.google.gson.JsonObject
-import com.pubnub.api.PNConfiguration
 import com.pubnub.api.PubNub
+import com.pubnub.api.UserId
 import com.pubnub.api.callbacks.SubscribeCallback
 import com.pubnub.api.models.consumer.PNStatus
 import com.pubnub.api.models.consumer.history.PNHistoryResult
@@ -22,21 +22,19 @@ class PubNubManager(
     private val pubnub: PubNub
 
     init {
-        val config = PNConfiguration().apply {
-            publishKey = PUBLISH_KEY
-            subscribeKey = SUBSCRIBE_KEY
-            uuid = username
-            secure = true
+        val userId = UserId(username)
+        pubnub = PubNub.create(userId, SUBSCRIBE_KEY) { builder ->
+            builder.publishKey = PUBLISH_KEY
+            builder.secure = true
         }
-        pubnub = PubNub(config)
         addListener()
     }
 
     private fun addListener() {
         pubnub.addListener(object : SubscribeCallback() {
             override fun status(pubnub: PubNub, status: PNStatus) {
-                if (status.isError) {
-                    onError("${status.category} (${status.errorData.throwable?.message})")
+                if (status.isError()) {
+                    onError("${status.category} (${status.exception?.message})")
                 } else {
                     onStatus(status.category.name)
                 }
@@ -74,8 +72,8 @@ class PubNubManager(
             channel = channel,
             message = payload
         ).async { result, status ->
-            if (status.isError) {
-                onError("Publish error: ${status.errorData.throwable?.message}")
+            if (status.isError()) {
+                onError("Publish error: ${status.exception?.message}")
             } else {
                 onMessageReceived(payload, false)
             }
@@ -87,8 +85,8 @@ class PubNubManager(
             channel = channel,
             count = count
         ).async { result: PNHistoryResult?, status: PNStatus ->
-            if (status.isError) {
-                onError("History error: ${status.errorData.throwable?.message}")
+            if (status.isError()) {
+                onError("History error: ${status.exception?.message}")
                 return@async
             }
             val messages = result?.messages.orEmpty()
@@ -104,8 +102,8 @@ class PubNubManager(
             includeUUIDs = true,
             includeState = false
         ).async { result, status ->
-            if (status.isError) {
-                onError("HereNow error: ${status.errorData.throwable?.message}")
+            if (status.isError()) {
+                onError("HereNow error: ${status.exception?.message}")
                 return@async
             }
             result?.channels?.get(channel)?.occupants?.forEach { occupant ->
