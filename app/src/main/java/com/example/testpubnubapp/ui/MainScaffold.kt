@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Add
+import android.app.Activity
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -20,11 +21,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -49,12 +53,12 @@ private data class BottomNavItem(
 fun MainScaffold(
     uiState: ChatUiState,
     onSend: (String, String) -> Unit,
-    onRefreshHistory: () -> Unit,
     onMarkChatRead: (String) -> Unit
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = backStackEntry?.destination
+    val activity = LocalContext.current as? Activity
     val bottomItems = listOf(
         BottomNavItem(ROUTE_HOME, "Home", Icons.Default.Home),
         BottomNavItem(ROUTE_MENTIONS, "Mentions", Icons.Default.AlternateEmail),
@@ -72,6 +76,14 @@ fun MainScaffold(
         }
     }
 
+    val currentRoute = currentDestination?.route
+    val chatTitle = backStackEntry?.arguments?.getString("chatTitle").orEmpty()
+    val isChatRoute = currentRoute == "$ROUTE_CHAT/{chatId}/{chatTitle}"
+
+    LaunchedEffect(currentRoute, chatTitle) {
+        activity?.title = if (isChatRoute) chatTitle else ""
+    }
+
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -81,7 +93,9 @@ fun MainScaffold(
                         selected = selected,
                         onClick = {
                             navController.navigate(item.route) {
-                                popUpTo(ROUTE_HOME) { saveState = true }
+                                popUpTo(navController.graph.findStartDestination().id) {
+                                    saveState = true
+                                }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -207,9 +221,7 @@ fun MainScaffold(
                 ChatScreen(
                     uiState = uiState,
                     chatId = groupChatId("Group chat"),
-                    chatTitle = "Group chat",
                     onSend = onSend,
-                    onRefreshHistory = onRefreshHistory,
                     onChatOpened = onMarkChatRead
                 )
             }
@@ -219,9 +231,7 @@ fun MainScaffold(
                 ChatScreen(
                     uiState = uiState,
                     chatId = chatId.ifBlank { PubNubManager.CHANNEL_NAME },
-                    chatTitle = chatTitle.ifBlank { "Chat" },
                     onSend = onSend,
-                    onRefreshHistory = onRefreshHistory,
                     onChatOpened = onMarkChatRead
                 )
             }

@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AssistChip
@@ -33,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.example.testpubnubapp.ChatUiState
 import com.example.testpubnubapp.models.ChatMessage
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
@@ -50,9 +47,7 @@ import java.util.Locale
 fun ChatScreen(
     uiState: ChatUiState,
     chatId: String,
-    chatTitle: String,
     onSend: (String, String) -> Unit,
-    onRefreshHistory: () -> Unit,
     onChatOpened: (String) -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
@@ -72,46 +67,6 @@ fun ChatScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = chatTitle,
-            style = MaterialTheme.typography.headlineSmall
-        )
-        Text(
-            text = "Status: ${uiState.connectionStatus}",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { userId ->
-            Text(
-                text = "You: $userId",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-        uiState.errorMessage?.let { error ->
-            Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Online Users (${uiState.onlineUsers.size})")
-            Button(onClick = onRefreshHistory) {
-                Text("Refresh History")
-            }
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-        ) {
-            items(uiState.onlineUsers) { user ->
-                Text(text = "• ${user.id}")
-            }
-        }
-
-        Text(text = "Messages", style = MaterialTheme.typography.titleMedium)
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
