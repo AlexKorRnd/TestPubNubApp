@@ -76,7 +76,7 @@ fun HomeScreen(
         DirectMessageItem("3", "Darlene Robertson", true),
         DirectMessageItem("4", "Leslie Alexander", false)
     ),
-    onChatSelected: (String) -> Unit = {}
+    onChatSelected: (String, String) -> Unit = { _, _ -> }
 ) {
     var searchValue by remember { mutableStateOf("") }
     var unreadExpanded by remember { mutableStateOf(true) }
@@ -139,7 +139,7 @@ fun HomeScreen(
                     SectionItemRow(
                         title = item.name,
                         subtitle = "${item.count} new messages",
-                        onClick = { onChatSelected(item.name) }
+                        onClick = { onChatSelected(item.id, item.name) }
                     )
                 }
             }
@@ -158,7 +158,7 @@ fun HomeScreen(
                     SectionItemRow(
                         title = channel.name,
                         subtitle = "${channel.messageCount} messages",
-                        onClick = { onChatSelected(channel.name) }
+                        onClick = { onChatSelected(channel.id, channel.name) }
                     )
                 }
             }
@@ -177,7 +177,7 @@ fun HomeScreen(
                     SectionItemRow(
                         title = group.name,
                         subtitle = "${group.memberCount} members",
-                        onClick = { onChatSelected(group.name) }
+                        onClick = { onChatSelected(group.id, group.name) }
                     )
                 }
             }
@@ -195,7 +195,7 @@ fun HomeScreen(
                 filteredDirectMessages.forEach { item ->
                     DirectMessageRow(
                         item = item,
-                        onClick = { onChatSelected(item.name) }
+                        onClick = { onChatSelected(item.id, item.name) }
                     )
                 }
             }

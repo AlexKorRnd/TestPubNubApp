@@ -61,10 +61,11 @@ class PubNubManager(
         )
     }
 
-    fun publish(channel: String, text: String) {
+    fun publish(channel: String, text: String, chatId: String) {
         val payload = JsonObject().apply {
             addProperty("text", text)
             addProperty("sender", username)
+            addProperty("chatId", chatId)
             addProperty("timestampEpochMillis", System.currentTimeMillis())
         }
 

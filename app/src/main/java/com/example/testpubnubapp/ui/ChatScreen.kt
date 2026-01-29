@@ -49,16 +49,20 @@ import java.util.Locale
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
+    chatId: String,
     chatTitle: String,
-    onSend: (String) -> Unit,
-    onRefreshHistory: () -> Unit
+    onSend: (String, String) -> Unit,
+    onRefreshHistory: () -> Unit,
+    onChatOpened: (String) -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
     val messageListState = rememberLazyListState()
+    val visibleMessages = uiState.messages.filter { it.chatId == chatId }
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            messageListState.animateScrollToItem(uiState.messages.lastIndex)
+    LaunchedEffect(chatId, uiState.messages.size) {
+        onChatOpened(chatId)
+        if (visibleMessages.isNotEmpty()) {
+            messageListState.animateScrollToItem(visibleMessages.lastIndex)
         }
     }
 
@@ -115,9 +119,9 @@ fun ChatScreen(
             state = messageListState,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(uiState.messages) { index, message ->
+            itemsIndexed(visibleMessages) { index, message ->
                 val currentDate = message.toLocalDate()
-                val previousDate = uiState.messages.getOrNull(index - 1)?.toLocalDate()
+                val previousDate = visibleMessages.getOrNull(index - 1)?.toLocalDate()
                 if (previousDate == null || previousDate != currentDate) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -221,7 +225,7 @@ fun ChatScreen(
             )
             IconButton(
                 onClick = {
-                    onSend(messageText)
+                    onSend(chatId, messageText)
                     messageText = ""
                 },
                 enabled = messageText.isNotBlank()

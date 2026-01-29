@@ -48,8 +48,9 @@ private data class BottomNavItem(
 @Composable
 fun MainScaffold(
     uiState: ChatUiState,
-    onSend: (String) -> Unit,
-    onRefreshHistory: () -> Unit
+    onSend: (String, String) -> Unit,
+    onRefreshHistory: () -> Unit,
+    onMarkChatRead: (String) -> Unit
 ) {
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
@@ -60,6 +61,16 @@ fun MainScaffold(
         BottomNavItem(ROUTE_PROFILE, "Profile", Icons.Default.Person)
     )
     val showFab = currentDestination?.route != ROUTE_NEW_CHAT
+    fun directChatId(userId: String) = "dm:$userId"
+    fun groupChatId(groupName: String) = "group:$groupName"
+    fun unreadCountFor(chatId: String): Int {
+        val lastRead = uiState.lastReadAt[chatId] ?: 0L
+        return uiState.messages.count { message ->
+            message.chatId == chatId &&
+                message.sender != uiState.currentUserId &&
+                message.timestampEpochMillis > lastRead
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -99,42 +110,76 @@ fun MainScaffold(
             composable(ROUTE_HOME) {
                 val onlineIds = uiState.onlineUsers.map { it.id }.toSet()
                 val directMessageUsers = uiState.messages
-                    .map { it.sender }
+                    .map { it.chatId }
+                    .filter { it.startsWith("dm:") }
+                    .map { it.removePrefix("dm:") }
                     .filter { it.isNotBlank() && it != uiState.currentUserId }
                     .distinct()
                 val dmItems = directMessageUsers.map { sender ->
                     DirectMessageItem(
-                        id = sender,
+                        id = directChatId(sender),
                         name = sender,
                         isOnline = onlineIds.contains(sender)
                     )
                 }
-                val unreadItems = uiState.messages
-                    .filter { it.sender != uiState.currentUserId }
-                    .groupBy { it.sender }
-                    .map { (sender, messages) ->
-                        UnreadItem(
-                            id = sender,
-                            name = sender,
-                            count = messages.size
-                        )
-                    }
-                    .sortedByDescending { it.count }
                 val publicChannels = listOf(
                     ChannelItem(
                         id = PubNubManager.CHANNEL_NAME,
                         name = "#${PubNubManager.CHANNEL_NAME}",
-                        messageCount = uiState.messages.size
+                        messageCount = uiState.messages.count {
+                            it.chatId == PubNubManager.CHANNEL_NAME
+                        }
                     )
                 )
+                val groups = emptyList<GroupItem>()
+                val unreadItems = buildList {
+                    publicChannels.forEach { channel ->
+                        val count = unreadCountFor(channel.id)
+                        if (count > 0) {
+                            add(
+                                UnreadItem(
+                                    id = channel.id,
+                                    name = channel.name,
+                                    count = count
+                                )
+                            )
+                        }
+                    }
+                    dmItems.forEach { dmItem ->
+                        val count = unreadCountFor(dmItem.id)
+                        if (count > 0) {
+                            add(
+                                UnreadItem(
+                                    id = dmItem.id,
+                                    name = dmItem.name,
+                                    count = count
+                                )
+                            )
+                        }
+                    }
+                    groups.forEach { group ->
+                        val count = unreadCountFor(group.id)
+                        if (count > 0) {
+                            add(
+                                UnreadItem(
+                                    id = group.id,
+                                    name = group.name,
+                                    count = count
+                                )
+                            )
+                        }
+                    }
+                }.sortedByDescending { it.count }
                 HomeScreen(
                     userName = uiState.currentUserId?.takeIf { it.isNotBlank() } ?: "User",
                     unreadItems = unreadItems,
                     publicChannels = publicChannels,
-                    groups = emptyList(),
+                    groups = groups,
                     dmItems = dmItems,
-                    onChatSelected = { chatName ->
-                        navController.navigate("$ROUTE_CHAT/${Uri.encode(chatName)}")
+                    onChatSelected = { chatId, chatName ->
+                        navController.navigate(
+                            "$ROUTE_CHAT/${Uri.encode(chatId)}/${Uri.encode(chatName)}"
+                        )
                     }
                 )
             }
@@ -152,24 +197,32 @@ fun MainScaffold(
             }
             composable(ROUTE_NEW_CHAT) {
                 NewChatScreen(onStartGroupChat = {
-                    navController.navigate("$ROUTE_CHAT/${Uri.encode("Group chat")}")
+                    val groupName = "Group chat"
+                    navController.navigate(
+                        "$ROUTE_CHAT/${Uri.encode(groupChatId(groupName))}/${Uri.encode(groupName)}"
+                    )
                 })
             }
             composable(ROUTE_GROUP_CHAT) {
                 ChatScreen(
                     uiState = uiState,
+                    chatId = groupChatId("Group chat"),
                     chatTitle = "Group chat",
                     onSend = onSend,
-                    onRefreshHistory = onRefreshHistory
+                    onRefreshHistory = onRefreshHistory,
+                    onChatOpened = onMarkChatRead
                 )
             }
-            composable("$ROUTE_CHAT/{chatTitle}") { entry ->
+            composable("$ROUTE_CHAT/{chatId}/{chatTitle}") { entry ->
+                val chatId = entry.arguments?.getString("chatId").orEmpty()
                 val chatTitle = entry.arguments?.getString("chatTitle").orEmpty()
                 ChatScreen(
                     uiState = uiState,
+                    chatId = chatId.ifBlank { PubNubManager.CHANNEL_NAME },
                     chatTitle = chatTitle.ifBlank { "Chat" },
                     onSend = onSend,
-                    onRefreshHistory = onRefreshHistory
+                    onRefreshHistory = onRefreshHistory,
+                    onChatOpened = onMarkChatRead
                 )
             }
         }
