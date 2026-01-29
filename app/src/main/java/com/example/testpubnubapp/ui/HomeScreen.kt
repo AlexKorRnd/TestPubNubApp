@@ -36,7 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-private data class DirectMessageItem(
+data class DirectMessageItem(
     val id: String,
     val name: String
 )
