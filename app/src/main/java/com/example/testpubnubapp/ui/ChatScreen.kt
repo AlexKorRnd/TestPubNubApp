@@ -8,9 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -42,6 +47,12 @@ fun ChatScreen(
             text = "Status: ${uiState.connectionStatus}",
             style = MaterialTheme.typography.bodyMedium
         )
+        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { userId ->
+            Text(
+                text = "You: $userId",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
         uiState.errorMessage?.let { error ->
             Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
         }
@@ -75,14 +86,61 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(uiState.messages) { message ->
-                Column {
-                    Text(text = "${message.sender} @ ${message.timestamp}")
-                    Text(text = message.text)
-                    if (message.isHistory) {
-                        Text(
-                            text = "(history)",
-                            style = MaterialTheme.typography.labelSmall
-                        )
+                val isCurrentUser = message.sender == uiState.currentUserId
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (isCurrentUser) Arrangement.End else Arrangement.Start
+                ) {
+                    Column(
+                        horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
+                    ) {
+                        if (!isCurrentUser) {
+                            Text(
+                                text = message.sender,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isCurrentUser) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(text = message.text)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = message.timestamp,
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    if (message.isHistory) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        AssistChip(
+                                            onClick = {},
+                                            label = {
+                                                Text(
+                                                    text = "history",
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            },
+                                            enabled = false,
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

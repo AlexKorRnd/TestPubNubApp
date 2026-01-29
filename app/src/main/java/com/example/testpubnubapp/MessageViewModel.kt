@@ -19,6 +19,8 @@ class MessageViewModel : ViewModel() {
     fun connect(username: String) {
         if (pubNubManager != null) return
 
+        _uiState.update { it.copy(currentUserId = username) }
+
         pubNubManager = PubNubManager(
             username = username,
             onMessageReceived = { payload, isHistory ->
@@ -82,6 +84,7 @@ class MessageViewModel : ViewModel() {
 data class ChatUiState(
     val messages: List<ChatMessage> = emptyList(),
     val onlineUsers: List<UserPresence> = emptyList(),
+    val currentUserId: String? = null,
     val connectionStatus: String = "Connecting",
     val errorMessage: String? = null
 )
