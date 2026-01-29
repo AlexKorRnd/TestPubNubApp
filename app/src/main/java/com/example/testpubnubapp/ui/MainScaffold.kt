@@ -94,10 +94,8 @@ fun MainScaffold(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(ROUTE_HOME) {
-                ChatScreen(
-                    uiState = uiState,
-                    onSend = onSend,
-                    onRefreshHistory = onRefreshHistory
+                HomeScreen(
+                    userName = uiState.currentUserId?.takeIf { it.isNotBlank() } ?: "User"
                 )
             }
             composable(ROUTE_MENTIONS) {
