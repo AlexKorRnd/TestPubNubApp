@@ -81,6 +81,27 @@ fun HomeScreen(
     var publicExpanded by remember { mutableStateOf(true) }
     var groupsExpanded by remember { mutableStateOf(true) }
     var directExpanded by remember { mutableStateOf(true) }
+    val query = searchValue.trim().lowercase()
+    val filteredUnread = if (query.isBlank()) {
+        unreadItems
+    } else {
+        unreadItems.filter { it.name.lowercase().contains(query) }
+    }
+    val filteredPublicChannels = if (query.isBlank()) {
+        publicChannels
+    } else {
+        publicChannels.filter { it.name.lowercase().contains(query) }
+    }
+    val filteredGroups = if (query.isBlank()) {
+        groups
+    } else {
+        groups.filter { it.name.lowercase().contains(query) }
+    }
+    val filteredDirectMessages = if (query.isBlank()) {
+        dmItems
+    } else {
+        dmItems.filter { it.name.lowercase().contains(query) }
+    }
     val horizontalPadding = 20.dp
     val sectionSpacing = 20.dp
 
@@ -109,10 +130,10 @@ fun HomeScreen(
             onToggle = { unreadExpanded = !unreadExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
-            if (unreadItems.isEmpty()) {
+            if (filteredUnread.isEmpty()) {
                 EmptySectionRow(label = "No unread messages")
             } else {
-                unreadItems.forEach { item ->
+                filteredUnread.forEach { item ->
                     SectionItemRow(
                         title = item.name,
                         subtitle = "${item.count} new messages"
@@ -127,10 +148,10 @@ fun HomeScreen(
             onToggle = { publicExpanded = !publicExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
-            if (publicChannels.isEmpty()) {
+            if (filteredPublicChannels.isEmpty()) {
                 EmptySectionRow(label = "No public channels yet")
             } else {
-                publicChannels.forEach { channel ->
+                filteredPublicChannels.forEach { channel ->
                     SectionItemRow(
                         title = channel.name,
                         subtitle = "${channel.messageCount} messages"
@@ -145,10 +166,10 @@ fun HomeScreen(
             onToggle = { groupsExpanded = !groupsExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
-            if (groups.isEmpty()) {
+            if (filteredGroups.isEmpty()) {
                 EmptySectionRow(label = "No groups yet")
             } else {
-                groups.forEach { group ->
+                filteredGroups.forEach { group ->
                     SectionItemRow(
                         title = group.name,
                         subtitle = "${group.memberCount} members"
@@ -163,10 +184,10 @@ fun HomeScreen(
             onToggle = { directExpanded = !directExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
-            if (dmItems.isEmpty()) {
+            if (filteredDirectMessages.isEmpty()) {
                 EmptySectionRow(label = "No direct messages yet")
             } else {
-                dmItems.forEach { item ->
+                filteredDirectMessages.forEach { item ->
                     DirectMessageRow(item = item)
                 }
             }
