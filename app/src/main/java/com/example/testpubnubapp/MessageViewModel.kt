@@ -42,9 +42,9 @@ class MessageViewModel : ViewModel() {
         }
     }
 
-    fun sendMessage(text: String) {
+    fun sendMessage(chatId: String, text: String) {
         if (text.isBlank()) return
-        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text)
+        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text, chatId)
     }
 
     fun refreshHistory() {
@@ -55,6 +55,7 @@ class MessageViewModel : ViewModel() {
         val message = ChatMessage(
             text = payload.get("text")?.asString.orEmpty(),
             sender = payload.get("sender")?.asString.orEmpty(),
+            chatId = payload.get("chatId")?.asString ?: PubNubManager.CHANNEL_NAME,
             timestampEpochMillis = payload.get("timestampEpochMillis")?.asLong
                 ?: System.currentTimeMillis(),
             isHistory = isHistory
@@ -76,6 +77,18 @@ class MessageViewModel : ViewModel() {
         }
     }
 
+    fun markChatRead(chatId: String) {
+        _uiState.update { state ->
+            val latestTimestamp = state.messages
+                .filter { it.chatId == chatId }
+                .maxOfOrNull { it.timestampEpochMillis }
+                ?: System.currentTimeMillis()
+            val updatedMap = state.lastReadAt.toMutableMap()
+            updatedMap[chatId] = latestTimestamp
+            state.copy(lastReadAt = updatedMap)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         pubNubManager?.disconnect()
@@ -87,5 +100,6 @@ data class ChatUiState(
     val onlineUsers: List<UserPresence> = emptyList(),
     val currentUserId: String? = null,
     val connectionStatus: String = "Connecting",
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val lastReadAt: Map<String, Long> = emptyMap()
 )

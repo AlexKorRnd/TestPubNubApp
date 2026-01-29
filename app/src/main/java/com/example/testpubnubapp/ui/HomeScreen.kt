@@ -1,6 +1,7 @@
 package com.example.testpubnubapp.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,7 +75,8 @@ fun HomeScreen(
         DirectMessageItem("2", "Ralph Edwards", false),
         DirectMessageItem("3", "Darlene Robertson", true),
         DirectMessageItem("4", "Leslie Alexander", false)
-    )
+    ),
+    onChatSelected: (String, String) -> Unit = { _, _ -> }
 ) {
     var searchValue by remember { mutableStateOf("") }
     var unreadExpanded by remember { mutableStateOf(true) }
@@ -136,7 +138,8 @@ fun HomeScreen(
                 filteredUnread.forEach { item ->
                     SectionItemRow(
                         title = item.name,
-                        subtitle = "${item.count} new messages"
+                        subtitle = "${item.count} new messages",
+                        onClick = { onChatSelected(item.id, item.name) }
                     )
                 }
             }
@@ -154,7 +157,8 @@ fun HomeScreen(
                 filteredPublicChannels.forEach { channel ->
                     SectionItemRow(
                         title = channel.name,
-                        subtitle = "${channel.messageCount} messages"
+                        subtitle = "${channel.messageCount} messages",
+                        onClick = { onChatSelected(channel.id, channel.name) }
                     )
                 }
             }
@@ -172,7 +176,8 @@ fun HomeScreen(
                 filteredGroups.forEach { group ->
                     SectionItemRow(
                         title = group.name,
-                        subtitle = "${group.memberCount} members"
+                        subtitle = "${group.memberCount} members",
+                        onClick = { onChatSelected(group.id, group.name) }
                     )
                 }
             }
@@ -188,7 +193,10 @@ fun HomeScreen(
                 EmptySectionRow(label = "No direct messages yet")
             } else {
                 filteredDirectMessages.forEach { item ->
-                    DirectMessageRow(item = item)
+                    DirectMessageRow(
+                        item = item,
+                        onClick = { onChatSelected(item.id, item.name) }
+                    )
                 }
             }
         }
@@ -337,10 +345,16 @@ private fun SectionBlock(
 private fun SectionItemRow(
     title: String,
     subtitle: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(12.dp)
+            .clickable(onClick = onClick),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -376,10 +390,16 @@ private fun EmptySectionRow(label: String) {
 @Composable
 private fun DirectMessageRow(
     item: DirectMessageItem,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(12.dp)
+            .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(36.dp)) {

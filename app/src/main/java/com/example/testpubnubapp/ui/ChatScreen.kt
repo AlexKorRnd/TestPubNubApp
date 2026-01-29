@@ -6,11 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AssistChip
@@ -33,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.unit.dp
 import com.example.testpubnubapp.ChatUiState
 import com.example.testpubnubapp.models.ChatMessage
-import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
@@ -49,15 +46,18 @@ import java.util.Locale
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
-    onSend: (String) -> Unit,
-    onRefreshHistory: () -> Unit
+    chatId: String,
+    onSend: (String, String) -> Unit,
+    onChatOpened: (String) -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
     val messageListState = rememberLazyListState()
+    val visibleMessages = uiState.messages.filter { it.chatId == chatId }
 
-    LaunchedEffect(uiState.messages.size) {
-        if (uiState.messages.isNotEmpty()) {
-            messageListState.animateScrollToItem(uiState.messages.lastIndex)
+    LaunchedEffect(chatId, uiState.messages.size) {
+        onChatOpened(chatId)
+        if (visibleMessages.isNotEmpty()) {
+            messageListState.animateScrollToItem(visibleMessages.lastIndex)
         }
     }
 
@@ -67,42 +67,6 @@ fun ChatScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(
-            text = "Status: ${uiState.connectionStatus}",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { userId ->
-            Text(
-                text = "You: $userId",
-                style = MaterialTheme.typography.bodyMedium
-            )
-        }
-        uiState.errorMessage?.let { error ->
-            Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(text = "Online Users (${uiState.onlineUsers.size})")
-            Button(onClick = onRefreshHistory) {
-                Text("Refresh History")
-            }
-        }
-
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(80.dp)
-        ) {
-            items(uiState.onlineUsers) { user ->
-                Text(text = "• ${user.id}")
-            }
-        }
-
-        Text(text = "Messages", style = MaterialTheme.typography.titleMedium)
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -110,9 +74,9 @@ fun ChatScreen(
             state = messageListState,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            itemsIndexed(uiState.messages) { index, message ->
+            itemsIndexed(visibleMessages) { index, message ->
                 val currentDate = message.toLocalDate()
-                val previousDate = uiState.messages.getOrNull(index - 1)?.toLocalDate()
+                val previousDate = visibleMessages.getOrNull(index - 1)?.toLocalDate()
                 if (previousDate == null || previousDate != currentDate) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -216,7 +180,7 @@ fun ChatScreen(
             )
             IconButton(
                 onClick = {
-                    onSend(messageText)
+                    onSend(chatId, messageText)
                     messageText = ""
                 },
                 enabled = messageText.isNotBlank()

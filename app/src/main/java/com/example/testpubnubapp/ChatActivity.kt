@@ -28,7 +28,7 @@ class ChatActivity : ComponentActivity() {
                 MainScaffold(
                     uiState = uiState,
                     onSend = viewModel::sendMessage,
-                    onRefreshHistory = viewModel::refreshHistory
+                    onMarkChatRead = viewModel::markChatRead
                 )
             }
         }
