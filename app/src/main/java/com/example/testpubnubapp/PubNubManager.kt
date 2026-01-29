@@ -77,8 +77,6 @@ class PubNubManager(
         ).async { result ->
             if (result.isFailure) {
                 onError("Publish error: ${result.exceptionOrNull()}")
-            } else {
-                onMessageReceived(payload, false)
             }
         }
     }
