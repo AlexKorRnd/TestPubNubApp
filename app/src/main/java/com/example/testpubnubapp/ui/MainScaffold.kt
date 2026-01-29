@@ -64,7 +64,7 @@ fun MainScaffold(
         BottomNavItem(ROUTE_MENTIONS, "Mentions", Icons.Default.AlternateEmail),
         BottomNavItem(ROUTE_PROFILE, "Profile", Icons.Default.Person)
     )
-    val showFab = currentDestination?.route != ROUTE_NEW_CHAT
+    val showFab = currentDestination?.route == ROUTE_HOME
     fun directChatId(userId: String) = "dm:$userId"
     fun groupChatId(groupName: String) = "group:$groupName"
     fun unreadCountFor(chatId: String): Int {
