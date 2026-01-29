@@ -32,24 +32,47 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
+data class UnreadItem(
+    val id: String,
+    val name: String,
+    val count: Int
+)
+
+data class ChannelItem(
+    val id: String,
+    val name: String,
+    val messageCount: Int
+)
+
+data class GroupItem(
+    val id: String,
+    val name: String,
+    val memberCount: Int
+)
+
 data class DirectMessageItem(
     val id: String,
-    val name: String
+    val name: String,
+    val isOnline: Boolean
 )
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     userName: String = "Jane Smith",
+    unreadItems: List<UnreadItem> = emptyList(),
+    publicChannels: List<ChannelItem> = emptyList(),
+    groups: List<GroupItem> = emptyList(),
     dmItems: List<DirectMessageItem> = listOf(
-        DirectMessageItem("1", "Cody Fisher"),
-        DirectMessageItem("2", "Ralph Edwards"),
-        DirectMessageItem("3", "Darlene Robertson"),
-        DirectMessageItem("4", "Leslie Alexander")
+        DirectMessageItem("1", "Cody Fisher", true),
+        DirectMessageItem("2", "Ralph Edwards", false),
+        DirectMessageItem("3", "Darlene Robertson", true),
+        DirectMessageItem("4", "Leslie Alexander", false)
     )
 ) {
     var searchValue by remember { mutableStateOf("") }
@@ -74,32 +97,61 @@ fun HomeScreen(
             modifier = Modifier.padding(horizontal = horizontalPadding)
         )
 
-        SectionHeader(
+        SectionBlock(
             title = "Unread",
             modifier = Modifier.padding(horizontal = horizontalPadding)
-        )
+        ) {
+            if (unreadItems.isEmpty()) {
+                EmptySectionRow(label = "No unread messages")
+            } else {
+                unreadItems.forEach { item ->
+                    SectionItemRow(
+                        title = item.name,
+                        subtitle = "${item.count} new messages"
+                    )
+                }
+            }
+        }
 
-        SectionHeader(
+        SectionBlock(
             title = "Public Channels",
             modifier = Modifier.padding(horizontal = horizontalPadding)
-        )
+        ) {
+            if (publicChannels.isEmpty()) {
+                EmptySectionRow(label = "No public channels yet")
+            } else {
+                publicChannels.forEach { channel ->
+                    SectionItemRow(
+                        title = channel.name,
+                        subtitle = "${channel.messageCount} messages"
+                    )
+                }
+            }
+        }
 
-        SectionHeader(
+        SectionBlock(
             title = "Groups",
             modifier = Modifier.padding(horizontal = horizontalPadding)
-        )
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SectionHeader(
-                title = "Direct Messages",
-                modifier = Modifier.padding(horizontal = horizontalPadding)
-            )
-            Column(
-                modifier = Modifier.padding(horizontal = horizontalPadding),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+            if (groups.isEmpty()) {
+                EmptySectionRow(label = "No groups yet")
+            } else {
+                groups.forEach { group ->
+                    SectionItemRow(
+                        title = group.name,
+                        subtitle = "${group.memberCount} members"
+                    )
+                }
+            }
+        }
+
+        SectionBlock(
+            title = "Direct Messages",
+            modifier = Modifier.padding(horizontal = horizontalPadding)
+        ) {
+            if (dmItems.isEmpty()) {
+                EmptySectionRow(label = "No direct messages yet")
+            } else {
                 dmItems.forEach { item ->
                     DirectMessageRow(item = item)
                 }
@@ -237,6 +289,63 @@ private fun SectionHeader(
 }
 
 @Composable
+private fun SectionBlock(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SectionHeader(title = title)
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SectionItemRow(
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmptySectionRow(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
 private fun DirectMessageRow(
     item: DirectMessageItem,
     modifier: Modifier = Modifier
@@ -245,18 +354,29 @@ private fun DirectMessageRow(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.secondaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = item.name.take(1).uppercase(),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer
-            )
+        Box(modifier = Modifier.size(36.dp)) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = item.name.take(1).uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            if (item.isOnline) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF2ECC71))
+                )
+            }
         }
         Spacer(modifier = Modifier.width(12.dp))
         Text(

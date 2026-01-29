@@ -29,6 +29,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.testpubnubapp.ChatUiState
+import com.example.testpubnubapp.PubNubManager
 
 private const val ROUTE_HOME = "home"
 private const val ROUTE_MENTIONS = "mentions"
@@ -94,8 +95,42 @@ fun MainScaffold(
             modifier = Modifier.padding(innerPadding)
         ) {
             composable(ROUTE_HOME) {
+                val onlineIds = uiState.onlineUsers.map { it.id }.toSet()
+                val directMessageUsers = uiState.messages
+                    .map { it.sender }
+                    .filter { it.isNotBlank() && it != uiState.currentUserId }
+                    .distinct()
+                val dmItems = directMessageUsers.map { sender ->
+                    DirectMessageItem(
+                        id = sender,
+                        name = sender,
+                        isOnline = onlineIds.contains(sender)
+                    )
+                }
+                val unreadItems = uiState.messages
+                    .filter { it.sender != uiState.currentUserId }
+                    .groupBy { it.sender }
+                    .map { (sender, messages) ->
+                        UnreadItem(
+                            id = sender,
+                            name = sender,
+                            count = messages.size
+                        )
+                    }
+                    .sortedByDescending { it.count }
+                val publicChannels = listOf(
+                    ChannelItem(
+                        id = PubNubManager.CHANNEL_NAME,
+                        name = "#${PubNubManager.CHANNEL_NAME}",
+                        messageCount = uiState.messages.size
+                    )
+                )
                 HomeScreen(
-                    userName = uiState.currentUserId?.takeIf { it.isNotBlank() } ?: "User"
+                    userName = uiState.currentUserId?.takeIf { it.isNotBlank() } ?: "User",
+                    unreadItems = unreadItems,
+                    publicChannels = publicChannels,
+                    groups = emptyList(),
+                    dmItems = dmItems
                 )
             }
             composable(ROUTE_MENTIONS) {
