@@ -8,7 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.testpubnubapp.ui.ChatScreen
+import com.example.testpubnubapp.ui.MainScaffold
 
 class ChatActivity : ComponentActivity() {
     private val viewModel: MessageViewModel by viewModels()
@@ -25,7 +25,7 @@ class ChatActivity : ComponentActivity() {
                     }
                 }
                 val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-                ChatScreen(
+                MainScaffold(
                     uiState = uiState,
                     onSend = viewModel::sendMessage,
                     onRefreshHistory = viewModel::refreshHistory
