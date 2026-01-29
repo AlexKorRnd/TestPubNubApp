@@ -8,6 +8,8 @@ import com.pubnub.api.models.consumer.PNStatus
 import com.pubnub.api.models.consumer.history.PNHistoryResult
 import com.pubnub.api.models.consumer.pubsub.PNMessageResult
 import com.pubnub.api.models.consumer.pubsub.PNPresenceEventResult
+import com.pubnub.api.v2.callbacks.Consumer
+import com.pubnub.api.v2.callbacks.Result
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -23,17 +25,17 @@ class PubNubManager(
 
     init {
         val userId = UserId(username)
-        pubnub = PubNub.create(userId, SUBSCRIBE_KEY) { builder ->
-            builder.publishKey = PUBLISH_KEY
-            builder.secure = true
-        }
+        pubnub = PubNub.create(userId, SUBSCRIBE_KEY, {
+            this.publishKey = PUBLISH_KEY
+            this.secure = true
+        })
         addListener()
     }
 
     private fun addListener() {
         pubnub.addListener(object : SubscribeCallback() {
             override fun status(pubnub: PubNub, status: PNStatus) {
-                if (status.isError()) {
+                if (status.error) {
                     onError("${status.category} (${status.exception?.message})")
                 } else {
                     onStatus(status.category.name)
@@ -68,12 +70,13 @@ class PubNubManager(
             addProperty("sender", username)
             addProperty("timestamp", formatTimestamp(System.currentTimeMillis()))
         }
+
         pubnub.publish(
             channel = channel,
             message = payload
-        ).async { result, status ->
-            if (status.isError()) {
-                onError("Publish error: ${status.exception?.message}")
+        ).async { result ->
+            if (result.isFailure) {
+                onError("Publish error: ${result.exceptionOrNull()}")
             } else {
                 onMessageReceived(payload, false)
             }
@@ -84,12 +87,12 @@ class PubNubManager(
         pubnub.history(
             channel = channel,
             count = count
-        ).async { result: PNHistoryResult?, status: PNStatus ->
-            if (status.isError()) {
-                onError("History error: ${status.exception?.message}")
+        ).async { result ->
+            if (result.isFailure) {
+                onError("History error: ${result.exceptionOrNull()}")
                 return@async
             }
-            val messages = result?.messages.orEmpty()
+            val messages = result.getOrNull()?.messages.orEmpty()
             messages.forEach { entry ->
                 entry.entry.asJsonObject?.let { onMessageReceived(it, true) }
             }
@@ -101,13 +104,13 @@ class PubNubManager(
             channels = listOf(channel),
             includeUUIDs = true,
             includeState = false
-        ).async { result, status ->
-            if (status.isError()) {
-                onError("HereNow error: ${status.exception?.message}")
+        ).async { result ->
+            if (result.isFailure) {
+                onError("HereNow error: ${result.exceptionOrNull()}")
                 return@async
             }
-            result?.channels?.get(channel)?.occupants?.forEach { occupant ->
-                occupant.uuid?.let { onPresenceChange(it, true) }
+            result.getOrNull()?.channels?.get(channel)?.occupants?.forEach { occupant ->
+                occupant.uuid.let { onPresenceChange(it, true) }
             }
         }
     }
@@ -124,7 +127,7 @@ class PubNubManager(
 
     companion object {
         const val CHANNEL_NAME = "global_chat"
-        const val PUBLISH_KEY = "demo"
-        const val SUBSCRIBE_KEY = "demo"
+        const val PUBLISH_KEY = "pub-c-1275d4de-a88d-46ef-977e-1b836aaf9d99"
+        const val SUBSCRIBE_KEY = "sub-c-9ed5200e-667c-4004-b00e-bd643f325a22"
     }
 }
