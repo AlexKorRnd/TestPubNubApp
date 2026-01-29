@@ -8,13 +8,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -23,6 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.testpubnubapp.ChatUiState
+import com.example.testpubnubapp.models.ChatMessage
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun ChatScreen(
@@ -31,6 +45,13 @@ fun ChatScreen(
     onRefreshHistory: () -> Unit
 ) {
     var messageText by remember { mutableStateOf("") }
+    val messageListState = rememberLazyListState()
+
+    LaunchedEffect(uiState.messages.size) {
+        if (uiState.messages.isNotEmpty()) {
+            messageListState.animateScrollToItem(uiState.messages.lastIndex)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -42,6 +63,12 @@ fun ChatScreen(
             text = "Status: ${uiState.connectionStatus}",
             style = MaterialTheme.typography.bodyMedium
         )
+        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { userId ->
+            Text(
+                text = "You: $userId",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
         uiState.errorMessage?.let { error ->
             Text(text = "Error: $error", color = MaterialTheme.colorScheme.error)
         }
@@ -72,17 +99,78 @@ fun ChatScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
+            state = messageListState,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(uiState.messages) { message ->
-                Column {
-                    Text(text = "${message.sender} @ ${message.timestamp}")
-                    Text(text = message.text)
-                    if (message.isHistory) {
+            itemsIndexed(uiState.messages) { index, message ->
+                val currentDate = message.toLocalDate()
+                val previousDate = uiState.messages.getOrNull(index - 1)?.toLocalDate()
+                if (previousDate == null || previousDate != currentDate) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
                         Text(
-                            text = "(history)",
-                            style = MaterialTheme.typography.labelSmall
+                            text = formatDateSeparator(currentDate),
+                            style = MaterialTheme.typography.labelMedium
                         )
+                    }
+                }
+                val isCurrentUser = message.sender == uiState.currentUserId
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = if (isCurrentUser) Arrangement.End else Arrangement.Start
+                ) {
+                    Column(
+                        horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
+                    ) {
+                        if (!isCurrentUser) {
+                            Text(
+                                text = message.sender,
+                                style = MaterialTheme.typography.labelMedium
+                            )
+                        }
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isCurrentUser) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceVariant
+                                }
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(text = message.text)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = formatMessageTimestamp(message.timestampEpochMillis),
+                                        style = MaterialTheme.typography.labelSmall
+                                    )
+                                    if (message.isHistory) {
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        AssistChip(
+                                            onClick = {},
+                                            label = {
+                                                Text(
+                                                    text = "history",
+                                                    style = MaterialTheme.typography.labelSmall
+                                                )
+                                            },
+                                            enabled = false,
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -109,5 +197,41 @@ fun ChatScreen(
                 Text("Send")
             }
         }
+    }
+}
+
+private fun ChatMessage.toLocalDate(): LocalDate {
+    val zoneId = ZoneId.systemDefault()
+    return Instant.ofEpochMilli(timestampEpochMillis).atZone(zoneId).toLocalDate()
+}
+
+private fun formatMessageTimestamp(epochMillis: Long): String {
+    val zoneId = ZoneId.systemDefault()
+    val locale = Locale.getDefault()
+    val messageDateTime = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
+    val messageDate = messageDateTime.toLocalDate()
+    val today = LocalDate.now(zoneId)
+    return when {
+        messageDate == today -> messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
+        messageDate == today.minusDays(1) -> {
+            val time = messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
+            "Вчера, $time"
+        }
+        messageDate.year == today.year -> messageDateTime.format(
+            DateTimeFormatter.ofPattern("d MMM, HH:mm", locale)
+        )
+        else -> messageDateTime.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale))
+    }
+}
+
+private fun formatDateSeparator(date: LocalDate): String {
+    val zoneId = ZoneId.systemDefault()
+    val locale = Locale.getDefault()
+    val today = LocalDate.now(zoneId)
+    return when {
+        date == today -> "Сегодня"
+        date == today.minusDays(1) -> "Вчера"
+        date.year == today.year -> date.format(DateTimeFormatter.ofPattern("d MMMM", locale))
+        else -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
     }
 }
