@@ -49,6 +49,7 @@ import java.util.Locale
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
+    chatTitle: String,
     onSend: (String) -> Unit,
     onRefreshHistory: () -> Unit
 ) {
@@ -67,6 +68,10 @@ fun ChatScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        Text(
+            text = chatTitle,
+            style = MaterialTheme.typography.headlineSmall
+        )
         Text(
             text = "Status: ${uiState.connectionStatus}",
             style = MaterialTheme.typography.bodyMedium

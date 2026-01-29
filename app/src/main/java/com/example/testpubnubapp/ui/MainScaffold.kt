@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import android.net.Uri
 import androidx.compose.material.icons.filled.AlternateEmail
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
@@ -36,6 +37,7 @@ private const val ROUTE_MENTIONS = "mentions"
 private const val ROUTE_PROFILE = "profile"
 private const val ROUTE_NEW_CHAT = "new_chat"
 private const val ROUTE_GROUP_CHAT = "group_chat"
+private const val ROUTE_CHAT = "chat"
 
 private data class BottomNavItem(
     val route: String,
@@ -130,7 +132,10 @@ fun MainScaffold(
                     unreadItems = unreadItems,
                     publicChannels = publicChannels,
                     groups = emptyList(),
-                    dmItems = dmItems
+                    dmItems = dmItems,
+                    onChatSelected = { chatName ->
+                        navController.navigate("$ROUTE_CHAT/${Uri.encode(chatName)}")
+                    }
                 )
             }
             composable(ROUTE_MENTIONS) {
@@ -146,11 +151,23 @@ fun MainScaffold(
                 )
             }
             composable(ROUTE_NEW_CHAT) {
-                NewChatScreen(onStartGroupChat = { navController.navigate(ROUTE_GROUP_CHAT) })
+                NewChatScreen(onStartGroupChat = {
+                    navController.navigate("$ROUTE_CHAT/${Uri.encode("Group chat")}")
+                })
             }
             composable(ROUTE_GROUP_CHAT) {
                 ChatScreen(
                     uiState = uiState,
+                    chatTitle = "Group chat",
+                    onSend = onSend,
+                    onRefreshHistory = onRefreshHistory
+                )
+            }
+            composable("$ROUTE_CHAT/{chatTitle}") { entry ->
+                val chatTitle = entry.arguments?.getString("chatTitle").orEmpty()
+                ChatScreen(
+                    uiState = uiState,
+                    chatTitle = chatTitle.ifBlank { "Chat" },
                     onSend = onSend,
                     onRefreshHistory = onRefreshHistory
                 )
