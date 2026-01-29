@@ -15,12 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -76,6 +75,10 @@ fun HomeScreen(
     )
 ) {
     var searchValue by remember { mutableStateOf("") }
+    var unreadExpanded by remember { mutableStateOf(true) }
+    var publicExpanded by remember { mutableStateOf(true) }
+    var groupsExpanded by remember { mutableStateOf(true) }
+    var directExpanded by remember { mutableStateOf(true) }
     val horizontalPadding = 20.dp
     val sectionSpacing = 20.dp
 
@@ -99,6 +102,8 @@ fun HomeScreen(
 
         SectionBlock(
             title = "Unread",
+            expanded = unreadExpanded,
+            onToggle = { unreadExpanded = !unreadExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
             if (unreadItems.isEmpty()) {
@@ -115,6 +120,8 @@ fun HomeScreen(
 
         SectionBlock(
             title = "Public Channels",
+            expanded = publicExpanded,
+            onToggle = { publicExpanded = !publicExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
             if (publicChannels.isEmpty()) {
@@ -131,6 +138,8 @@ fun HomeScreen(
 
         SectionBlock(
             title = "Groups",
+            expanded = groupsExpanded,
+            onToggle = { groupsExpanded = !groupsExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
             if (groups.isEmpty()) {
@@ -147,6 +156,8 @@ fun HomeScreen(
 
         SectionBlock(
             title = "Direct Messages",
+            expanded = directExpanded,
+            onToggle = { directExpanded = !directExpanded },
             modifier = Modifier.padding(horizontal = horizontalPadding)
         ) {
             if (dmItems.isEmpty()) {
@@ -202,21 +213,6 @@ private fun TopBar(
                 )
             }
         }
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceVariant
-        ) {
-            Box(
-                modifier = Modifier.size(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "⋯",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 
@@ -257,6 +253,8 @@ private fun SearchRow(
 @Composable
 private fun SectionHeader(
     title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -272,16 +270,14 @@ private fun SectionHeader(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { }) {
+            IconButton(onClick = onToggle) {
                 Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Collapse"
-                )
-            }
-            IconButton(onClick = { }) {
-                Icon(
-                    imageVector = Icons.Default.MoreHoriz,
-                    contentDescription = "More options"
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowUp
+                    } else {
+                        Icons.Default.KeyboardArrowDown
+                    },
+                    contentDescription = if (expanded) "Collapse" else "Expand"
                 )
             }
         }
@@ -291,6 +287,8 @@ private fun SectionHeader(
 @Composable
 private fun SectionBlock(
     title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -298,9 +296,15 @@ private fun SectionBlock(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        SectionHeader(title = title)
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            content()
+        SectionHeader(
+            title = title,
+            expanded = expanded,
+            onToggle = onToggle
+        )
+        if (expanded) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                content()
+            }
         }
     }
 }
