@@ -55,7 +55,8 @@ class MessageViewModel : ViewModel() {
         val message = ChatMessage(
             text = payload.get("text")?.asString.orEmpty(),
             sender = payload.get("sender")?.asString.orEmpty(),
-            timestamp = payload.get("timestamp")?.asString.orEmpty(),
+            timestampEpochMillis = payload.get("timestampEpochMillis")?.asLong
+                ?: System.currentTimeMillis(),
             isHistory = isHistory
         )
         _uiState.update { state ->

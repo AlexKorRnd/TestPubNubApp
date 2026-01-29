@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
@@ -30,6 +31,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.testpubnubapp.ChatUiState
+import com.example.testpubnubapp.models.ChatMessage
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @Composable
 fun ChatScreen(
@@ -95,7 +102,20 @@ fun ChatScreen(
             state = messageListState,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(uiState.messages) { message ->
+            itemsIndexed(uiState.messages) { index, message ->
+                val currentDate = message.toLocalDate()
+                val previousDate = uiState.messages.getOrNull(index - 1)?.toLocalDate()
+                if (previousDate == null || previousDate != currentDate) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = formatDateSeparator(currentDate),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                    }
+                }
                 val isCurrentUser = message.sender == uiState.currentUserId
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -128,7 +148,7 @@ fun ChatScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = message.timestamp,
+                                        text = formatMessageTimestamp(message.timestampEpochMillis),
                                         style = MaterialTheme.typography.labelSmall
                                     )
                                     if (message.isHistory) {
@@ -177,5 +197,41 @@ fun ChatScreen(
                 Text("Send")
             }
         }
+    }
+}
+
+private fun ChatMessage.toLocalDate(): LocalDate {
+    val zoneId = ZoneId.systemDefault()
+    return Instant.ofEpochMilli(timestampEpochMillis).atZone(zoneId).toLocalDate()
+}
+
+private fun formatMessageTimestamp(epochMillis: Long): String {
+    val zoneId = ZoneId.systemDefault()
+    val locale = Locale.getDefault()
+    val messageDateTime = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
+    val messageDate = messageDateTime.toLocalDate()
+    val today = LocalDate.now(zoneId)
+    return when {
+        messageDate == today -> messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
+        messageDate == today.minusDays(1) -> {
+            val time = messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
+            "Вчера, $time"
+        }
+        messageDate.year == today.year -> messageDateTime.format(
+            DateTimeFormatter.ofPattern("d MMM, HH:mm", locale)
+        )
+        else -> messageDateTime.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale))
+    }
+}
+
+private fun formatDateSeparator(date: LocalDate): String {
+    val zoneId = ZoneId.systemDefault()
+    val locale = Locale.getDefault()
+    val today = LocalDate.now(zoneId)
+    return when {
+        date == today -> "Сегодня"
+        date == today.minusDays(1) -> "Вчера"
+        date.year == today.year -> date.format(DateTimeFormatter.ofPattern("d MMMM", locale))
+        else -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
     }
 }

@@ -10,9 +10,6 @@ import com.pubnub.api.models.consumer.pubsub.PNMessageResult
 import com.pubnub.api.models.consumer.pubsub.PNPresenceEventResult
 import com.pubnub.api.v2.callbacks.Consumer
 import com.pubnub.api.v2.callbacks.Result
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class PubNubManager(
     private val username: String,
@@ -68,7 +65,7 @@ class PubNubManager(
         val payload = JsonObject().apply {
             addProperty("text", text)
             addProperty("sender", username)
-            addProperty("timestamp", formatTimestamp(System.currentTimeMillis()))
+            addProperty("timestampEpochMillis", System.currentTimeMillis())
         }
 
         pubnub.publish(
@@ -116,11 +113,6 @@ class PubNubManager(
     fun disconnect() {
         pubnub.unsubscribeAll()
         pubnub.destroy()
-    }
-
-    private fun formatTimestamp(epochMillis: Long): String {
-        val formatter = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
-        return formatter.format(Date(epochMillis))
     }
 
     companion object {
