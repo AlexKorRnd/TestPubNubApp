@@ -1,5 +1,6 @@
 package com.example.testpubnubapp
 
+import android.util.Log
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.pubnub.api.PubNub
@@ -62,12 +63,19 @@ class PubNubManager(
         )
     }
 
-    fun publish(channel: String, text: String, chatId: String, mentions: List<String>) {
+    fun publish(
+        channel: String,
+        text: String,
+        chatId: String,
+        mentions: List<String>,
+        imageBase64: String?
+    ) {
         val payload = JsonObject().apply {
             addProperty("text", text)
             addProperty("sender", username)
             addProperty("chatId", chatId)
             addProperty("timestampEpochMillis", System.currentTimeMillis())
+            imageBase64?.let { addProperty("imageBase64", it) }
             if (mentions.isNotEmpty()) {
                 add("mentions", JsonArray().apply { mentions.forEach { add(it) } })
             }
@@ -78,6 +86,7 @@ class PubNubManager(
             message = payload
         ).async { result ->
             if (result.isFailure) {
+                Log.e("PubNubManager", "Publish error", result.exceptionOrNull())
                 onError("Publish error: ${result.exceptionOrNull()}")
             }
         }

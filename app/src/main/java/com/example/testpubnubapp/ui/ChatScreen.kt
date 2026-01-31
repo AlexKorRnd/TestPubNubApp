@@ -1,10 +1,20 @@
 package com.example.testpubnubapp.ui
 
+import android.content.Context
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.PickVisualMediaRequest
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -13,12 +23,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -31,31 +47,33 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.unit.dp
-import com.example.testpubnubapp.ChatUiState
-import com.example.testpubnubapp.models.ChatMessage
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhotoCamera
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import com.example.testpubnubapp.ChatUiState
+import java.io.ByteArrayOutputStream
+import java.io.File
 
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
     chatId: String,
     onSend: (String, String) -> Unit,
+    onSendImage: (String, String) -> Unit,
     onChatOpened: (String) -> Unit,
     initialMessageTimestamp: Long?
 ) {
     var messageText by remember { mutableStateOf("") }
     var isMediaMenuExpanded by remember { mutableStateOf(false) }
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
     val messageListState = rememberLazyListState()
+    val context = LocalContext.current
     val visibleMessages = uiState.messages.filter { it.chatId == chatId }
     val knownUsers = buildSet {
         uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { add(it) }
@@ -75,6 +93,37 @@ fun ChatScreen(
             } ?: visibleMessages.lastIndex
             if (targetIndex >= 0) {
                 messageListState.animateScrollToItem(targetIndex)
+            }
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        val uri = cameraImageUri
+        if (success && uri != null) {
+            encodeImageFromUri(context, uri)?.let { encoded ->
+                onSendImage(chatId, encoded)
+            }
+        }
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            encodeImageFromUri(context, uri)?.let { encoded ->
+                onSendImage(chatId, encoded)
+            }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createImageUri(context)
+            cameraImageUri = uri
+            if (uri != null) {
+                cameraLauncher.launch(uri)
             }
         }
     }
@@ -133,12 +182,26 @@ fun ChatScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                val messageTextStyled = if (isCurrentUser) {
-                                    highlightMentions(message.text, knownUsers)
-                                } else {
-                                    buildAnnotatedString { append(message.text) }
+                                val messageImage = remember(message.imageBase64) {
+                                    message.imageBase64?.let { decodeImageBase64(it) }
                                 }
-                                Text(text = messageTextStyled)
+                                if (messageImage != null) {
+                                    Image(
+                                        bitmap = messageImage,
+                                        contentDescription = "Shared photo",
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .aspectRatio(4f / 3f)
+                                    )
+                                }
+                                if (message.text.isNotBlank()) {
+                                    val messageTextStyled = if (isCurrentUser) {
+                                        highlightMentions(message.text, knownUsers)
+                                    } else {
+                                        buildAnnotatedString { append(message.text) }
+                                    }
+                                    Text(text = messageTextStyled)
+                                }
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -191,14 +254,29 @@ fun ChatScreen(
                         text = { Text("Сделать фото") },
                         onClick = {
                             isMediaMenuExpanded = false
-                            /* TODO: open camera */
+                            val permission = android.Manifest.permission.CAMERA
+                            val permissionGranted = ContextCompat.checkSelfPermission(
+                                context,
+                                permission
+                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            if (permissionGranted) {
+                                val uri = createImageUri(context)
+                                cameraImageUri = uri
+                                if (uri != null) {
+                                    cameraLauncher.launch(uri)
+                                }
+                            } else {
+                                cameraPermissionLauncher.launch(permission)
+                            }
                         }
                     )
                     DropdownMenuItem(
                         text = { Text("Выбрать из галереи") },
                         onClick = {
                             isMediaMenuExpanded = false
-                            /* TODO: open gallery */
+                            galleryLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
                         }
                     )
                 }
@@ -261,3 +339,66 @@ private fun highlightMentions(text: String, knownUsers: Set<String>) = buildAnno
         append(text.substring(lastIndex))
     }
 }
+
+private fun createImageUri(context: Context): Uri? {
+    val imageFile = File.createTempFile("chat_photo_", ".jpg", context.cacheDir)
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        imageFile
+    )
+}
+
+private fun encodeImageFromUri(context: Context, uri: Uri): String? {
+    val resolver = context.contentResolver
+    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, boundsOptions)
+    }
+    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+        Log.e("ChatScreen", "Failed to read image bounds for $uri")
+        return null
+    }
+    val maxDimension = 1280
+    val sampleSize = calculateInSampleSize(
+        boundsOptions.outWidth,
+        boundsOptions.outHeight,
+        maxDimension
+    )
+    val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    val bitmap = resolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, decodeOptions)
+    } ?: return null
+    val outputStream = ByteArrayOutputStream()
+    val compressFormat = android.graphics.Bitmap.CompressFormat.JPEG
+    bitmap.compress(compressFormat, 80, outputStream)
+    val bytes = outputStream.toByteArray()
+    val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
+    if (encoded.length > MAX_IMAGE_BASE64_LENGTH) {
+        Log.e(
+            "ChatScreen",
+            "Image too large after resize (base64 length=${encoded.length})"
+        )
+        return null
+    }
+    return encoded
+}
+
+private fun decodeImageBase64(base64: String) = runCatching {
+    val bytes = Base64.decode(base64, Base64.DEFAULT)
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
+}.getOrNull()
+
+private fun calculateInSampleSize(width: Int, height: Int, maxDimension: Int): Int {
+    var inSampleSize = 1
+    var currentWidth = width
+    var currentHeight = height
+    while (currentWidth > maxDimension || currentHeight > maxDimension) {
+        inSampleSize *= 2
+        currentWidth /= 2
+        currentHeight /= 2
+    }
+    return inSampleSize
+}
+
+private const val MAX_IMAGE_BASE64_LENGTH = 500_000

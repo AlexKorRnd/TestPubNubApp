@@ -53,6 +53,7 @@ private data class BottomNavItem(
 fun MainScaffold(
     uiState: ChatUiState,
     onSend: (String, String) -> Unit,
+    onSendImage: (String, String) -> Unit,
     onMarkChatRead: (String) -> Unit
 ) {
     val navController = rememberNavController()
@@ -245,6 +246,7 @@ fun MainScaffold(
                     uiState = uiState,
                     chatId = groupChatId("Group chat"),
                     onSend = onSend,
+                    onSendImage = onSendImage,
                     onChatOpened = onMarkChatRead,
                     initialMessageTimestamp = null
                 )
@@ -267,6 +269,7 @@ fun MainScaffold(
                     uiState = uiState,
                     chatId = chatId.ifBlank { PubNubManager.CHANNEL_NAME },
                     onSend = onSend,
+                    onSendImage = onSendImage,
                     onChatOpened = onMarkChatRead,
                     initialMessageTimestamp = highlightTimestamp
                 )
