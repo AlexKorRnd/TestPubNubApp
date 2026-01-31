@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -187,9 +188,12 @@ fun ChatScreen(
             TextField(
                 value = messageText,
                 onValueChange = { messageText = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 72.dp),
                 placeholder = { Text("Напишите сообщение…") },
-                singleLine = true,
+                minLines = 2,
+                maxLines = 4,
                 shape = RoundedCornerShape(24.dp),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
