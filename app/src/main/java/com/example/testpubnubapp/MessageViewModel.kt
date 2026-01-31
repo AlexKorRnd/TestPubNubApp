@@ -44,7 +44,8 @@ class MessageViewModel : ViewModel() {
 
     fun sendMessage(chatId: String, text: String) {
         if (text.isBlank()) return
-        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text, chatId)
+        val mentions = extractMentions(text)
+        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text, chatId, mentions)
     }
 
     fun refreshHistory() {
@@ -52,12 +53,22 @@ class MessageViewModel : ViewModel() {
     }
 
     private fun addMessageFromPayload(payload: JsonObject, isHistory: Boolean) {
+        val mentionsFromPayload = payload.getAsJsonArray("mentions")
+            ?.mapNotNull { element -> element.takeIf { it.isJsonPrimitive }?.asString }
+            .orEmpty()
+        val messageText = payload.get("text")?.asString.orEmpty()
+        val mentions = if (mentionsFromPayload.isNotEmpty()) {
+            mentionsFromPayload
+        } else {
+            extractMentions(messageText)
+        }
         val message = ChatMessage(
-            text = payload.get("text")?.asString.orEmpty(),
+            text = messageText,
             sender = payload.get("sender")?.asString.orEmpty(),
             chatId = payload.get("chatId")?.asString ?: PubNubManager.CHANNEL_NAME,
             timestampEpochMillis = payload.get("timestampEpochMillis")?.asLong
                 ?: System.currentTimeMillis(),
+            mentions = mentions,
             isHistory = isHistory
         )
         _uiState.update { state ->
@@ -92,6 +103,15 @@ class MessageViewModel : ViewModel() {
     override fun onCleared() {
         super.onCleared()
         pubNubManager?.disconnect()
+    }
+
+    private fun extractMentions(text: String): List<String> {
+        val regex = Regex("@([A-Za-z0-9_.-]+)")
+        return regex.findAll(text)
+            .map { it.groupValues[1] }
+            .filter { it.isNotBlank() }
+            .distinct()
+            .toList()
     }
 }
 

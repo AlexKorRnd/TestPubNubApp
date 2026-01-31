@@ -1,5 +1,6 @@
 package com.example.testpubnubapp
 
+import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.pubnub.api.PubNub
 import com.pubnub.api.UserId
@@ -61,12 +62,15 @@ class PubNubManager(
         )
     }
 
-    fun publish(channel: String, text: String, chatId: String) {
+    fun publish(channel: String, text: String, chatId: String, mentions: List<String>) {
         val payload = JsonObject().apply {
             addProperty("text", text)
             addProperty("sender", username)
             addProperty("chatId", chatId)
             addProperty("timestampEpochMillis", System.currentTimeMillis())
+            if (mentions.isNotEmpty()) {
+                add("mentions", JsonArray().apply { mentions.forEach { add(it) } })
+            }
         }
 
         pubnub.publish(

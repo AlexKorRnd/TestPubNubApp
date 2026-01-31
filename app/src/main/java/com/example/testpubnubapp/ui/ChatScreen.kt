@@ -37,27 +37,41 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Send
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 @Composable
 fun ChatScreen(
     uiState: ChatUiState,
     chatId: String,
     onSend: (String, String) -> Unit,
-    onChatOpened: (String) -> Unit
+    onChatOpened: (String) -> Unit,
+    initialMessageTimestamp: Long?
 ) {
     var messageText by remember { mutableStateOf("") }
     val messageListState = rememberLazyListState()
     val visibleMessages = uiState.messages.filter { it.chatId == chatId }
+    val knownUsers = buildSet {
+        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { add(it) }
+        uiState.onlineUsers.forEach { add(it.id) }
+        uiState.messages.forEach { message ->
+            if (message.sender.isNotBlank()) {
+                add(message.sender)
+            }
+        }
+    }
 
-    LaunchedEffect(chatId, uiState.messages.size) {
+    LaunchedEffect(chatId, uiState.messages.size, initialMessageTimestamp) {
         onChatOpened(chatId)
         if (visibleMessages.isNotEmpty()) {
-            messageListState.animateScrollToItem(visibleMessages.lastIndex)
+            val targetIndex = initialMessageTimestamp?.let { timestamp ->
+                visibleMessages.indexOfFirst { it.timestampEpochMillis == timestamp }
+            } ?: visibleMessages.lastIndex
+            if (targetIndex >= 0) {
+                messageListState.animateScrollToItem(targetIndex)
+            }
         }
     }
 
@@ -115,7 +129,12 @@ fun ChatScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(text = message.text)
+                                val messageTextStyled = if (isCurrentUser) {
+                                    highlightMentions(message.text, knownUsers)
+                                } else {
+                                    buildAnnotatedString { append(message.text) }
+                                }
+                                Text(text = messageTextStyled)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -194,38 +213,27 @@ fun ChatScreen(
     }
 }
 
-private fun ChatMessage.toLocalDate(): LocalDate {
-    val zoneId = ZoneId.systemDefault()
-    return Instant.ofEpochMilli(timestampEpochMillis).atZone(zoneId).toLocalDate()
-}
+private val MentionHighlightColor = Color(0xFF1E88E5)
 
-private fun formatMessageTimestamp(epochMillis: Long): String {
-    val zoneId = ZoneId.systemDefault()
-    val locale = Locale.getDefault()
-    val messageDateTime = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
-    val messageDate = messageDateTime.toLocalDate()
-    val today = LocalDate.now(zoneId)
-    return when {
-        messageDate == today -> messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
-        messageDate == today.minusDays(1) -> {
-            val time = messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
-            "Вчера, $time"
+private fun highlightMentions(text: String, knownUsers: Set<String>) = buildAnnotatedString {
+    val regex = Regex("@([A-Za-z0-9_.-]+)")
+    var lastIndex = 0
+    regex.findAll(text).forEach { match ->
+        val range = match.range
+        if (range.first > lastIndex) {
+            append(text.substring(lastIndex, range.first))
         }
-        messageDate.year == today.year -> messageDateTime.format(
-            DateTimeFormatter.ofPattern("d MMM, HH:mm", locale)
-        )
-        else -> messageDateTime.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale))
+        val username = match.groupValues[1]
+        if (knownUsers.contains(username)) {
+            withStyle(style = SpanStyle(color = MentionHighlightColor)) {
+                append(match.value)
+            }
+        } else {
+            append(match.value)
+        }
+        lastIndex = range.last + 1
     }
-}
-
-private fun formatDateSeparator(date: LocalDate): String {
-    val zoneId = ZoneId.systemDefault()
-    val locale = Locale.getDefault()
-    val today = LocalDate.now(zoneId)
-    return when {
-        date == today -> "Сегодня"
-        date == today.minusDays(1) -> "Вчера"
-        date.year == today.year -> date.format(DateTimeFormatter.ofPattern("d MMMM", locale))
-        else -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
+    if (lastIndex < text.length) {
+        append(text.substring(lastIndex))
     }
 }
