@@ -6,6 +6,7 @@ import android.net.Uri
 import android.util.Base64
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.PickVisualMediaRequest
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -252,7 +253,7 @@ fun ChatScreen(
                         onClick = {
                             isMediaMenuExpanded = false
                             galleryLauncher.launch(
-                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                             )
                         }
                     )
