@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.contract.PickVisualMediaRequest
@@ -349,16 +350,55 @@ private fun createImageUri(context: Context): Uri? {
 }
 
 private fun encodeImageFromUri(context: Context, uri: Uri): String? {
-    val bytes = context.contentResolver.openInputStream(uri)?.use { inputStream ->
-        val bitmap = BitmapFactory.decodeStream(inputStream) ?: return@use null
-        val outputStream = ByteArrayOutputStream()
-        bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, outputStream)
-        outputStream.toByteArray()
+    val resolver = context.contentResolver
+    val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, boundsOptions)
+    }
+    if (boundsOptions.outWidth <= 0 || boundsOptions.outHeight <= 0) {
+        Log.e("ChatScreen", "Failed to read image bounds for $uri")
+        return null
+    }
+    val maxDimension = 1280
+    val sampleSize = calculateInSampleSize(
+        boundsOptions.outWidth,
+        boundsOptions.outHeight,
+        maxDimension
+    )
+    val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
+    val bitmap = resolver.openInputStream(uri)?.use { stream ->
+        BitmapFactory.decodeStream(stream, null, decodeOptions)
     } ?: return null
-    return Base64.encodeToString(bytes, Base64.NO_WRAP)
+    val outputStream = ByteArrayOutputStream()
+    val compressFormat = android.graphics.Bitmap.CompressFormat.JPEG
+    bitmap.compress(compressFormat, 80, outputStream)
+    val bytes = outputStream.toByteArray()
+    val encoded = Base64.encodeToString(bytes, Base64.NO_WRAP)
+    if (encoded.length > MAX_IMAGE_BASE64_LENGTH) {
+        Log.e(
+            "ChatScreen",
+            "Image too large after resize (base64 length=${encoded.length})"
+        )
+        return null
+    }
+    return encoded
 }
 
 private fun decodeImageBase64(base64: String) = runCatching {
     val bytes = Base64.decode(base64, Base64.DEFAULT)
     BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
 }.getOrNull()
+
+private fun calculateInSampleSize(width: Int, height: Int, maxDimension: Int): Int {
+    var inSampleSize = 1
+    var currentWidth = width
+    var currentHeight = height
+    while (currentWidth > maxDimension || currentHeight > maxDimension) {
+        inSampleSize *= 2
+        currentWidth /= 2
+        currentHeight /= 2
+    }
+    return inSampleSize
+}
+
+private const val MAX_IMAGE_BASE64_LENGTH = 500_000
