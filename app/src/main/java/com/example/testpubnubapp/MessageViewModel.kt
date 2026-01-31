@@ -34,6 +34,7 @@ class MessageViewModel : ViewModel() {
                 _uiState.update { it.copy(connectionStatus = status) }
             },
             onError = { error ->
+                Log.e("MessageViewModel", "PubNub error: $error")
                 _uiState.update { it.copy(errorMessage = error) }
             }
         ).also { manager ->
