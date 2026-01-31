@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -18,6 +19,7 @@ import androidx.compose.ui.unit.dp
 
 data class MentionItem(
     val sender: String,
+    val chatId: String,
     val chatName: String,
     val text: String,
     val timestampEpochMillis: Long
@@ -26,6 +28,7 @@ data class MentionItem(
 @Composable
 fun MentionsScreen(
     mentions: List<MentionItem>,
+    onMentionClick: (MentionItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (mentions.isEmpty()) {
@@ -43,7 +46,9 @@ fun MentionsScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(mentions) { mention ->
-            Card {
+            Card(
+                modifier = Modifier.clickable { onMentionClick(mention) }
+            ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()

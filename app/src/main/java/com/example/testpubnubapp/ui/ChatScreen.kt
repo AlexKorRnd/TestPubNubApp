@@ -47,7 +47,8 @@ fun ChatScreen(
     uiState: ChatUiState,
     chatId: String,
     onSend: (String, String) -> Unit,
-    onChatOpened: (String) -> Unit
+    onChatOpened: (String) -> Unit,
+    initialMessageTimestamp: Long?
 ) {
     var messageText by remember { mutableStateOf("") }
     val messageListState = rememberLazyListState()
@@ -62,10 +63,15 @@ fun ChatScreen(
         }
     }
 
-    LaunchedEffect(chatId, uiState.messages.size) {
+    LaunchedEffect(chatId, uiState.messages.size, initialMessageTimestamp) {
         onChatOpened(chatId)
         if (visibleMessages.isNotEmpty()) {
-            messageListState.animateScrollToItem(visibleMessages.lastIndex)
+            val targetIndex = initialMessageTimestamp?.let { timestamp ->
+                visibleMessages.indexOfFirst { it.timestampEpochMillis == timestamp }
+            } ?: visibleMessages.lastIndex
+            if (targetIndex >= 0) {
+                messageListState.animateScrollToItem(targetIndex)
+            }
         }
     }
 

@@ -32,6 +32,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.example.testpubnubapp.ChatUiState
 import com.example.testpubnubapp.PubNubManager
 
@@ -207,13 +208,23 @@ fun MainScaffold(
                         .map { message ->
                             MentionItem(
                                 sender = message.sender,
+                                chatId = message.chatId,
                                 chatName = displayChatName(message.chatId),
                                 text = message.text,
                                 timestampEpochMillis = message.timestampEpochMillis
                             )
                         }
                 }
-                MentionsScreen(mentions = mentions)
+                MentionsScreen(
+                    mentions = mentions,
+                    onMentionClick = { mention ->
+                        navController.navigate(
+                            "$ROUTE_CHAT/${Uri.encode(mention.chatId)}/" +
+                                "${Uri.encode(mention.chatName)}" +
+                                "?highlightTimestamp=${mention.timestampEpochMillis}"
+                        )
+                    }
+                )
             }
             composable(ROUTE_PROFILE) {
                 PlaceholderScreen(
@@ -234,17 +245,30 @@ fun MainScaffold(
                     uiState = uiState,
                     chatId = groupChatId("Group chat"),
                     onSend = onSend,
-                    onChatOpened = onMarkChatRead
+                    onChatOpened = onMarkChatRead,
+                    initialMessageTimestamp = null
                 )
             }
-            composable("$ROUTE_CHAT/{chatId}/{chatTitle}") { entry ->
+            composable(
+                route = "$ROUTE_CHAT/{chatId}/{chatTitle}?highlightTimestamp={highlightTimestamp}",
+                arguments = listOf(
+                    navArgument("highlightTimestamp") {
+                        nullable = true
+                        defaultValue = ""
+                    }
+                )
+            ) { entry ->
                 val chatId = entry.arguments?.getString("chatId").orEmpty()
                 val chatTitle = entry.arguments?.getString("chatTitle").orEmpty()
+                val highlightTimestamp = entry.arguments
+                    ?.getString("highlightTimestamp")
+                    ?.toLongOrNull()
                 ChatScreen(
                     uiState = uiState,
                     chatId = chatId.ifBlank { PubNubManager.CHANNEL_NAME },
                     onSend = onSend,
-                    onChatOpened = onMarkChatRead
+                    onChatOpened = onMarkChatRead,
+                    initialMessageTimestamp = highlightTimestamp
                 )
             }
         }
