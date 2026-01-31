@@ -5,6 +5,7 @@ data class ChatMessage(
     val sender: String,
     val chatId: String,
     val timestampEpochMillis: Long,
+    val imageBase64: String? = null,
     val mentions: List<String> = emptyList(),
     val isHistory: Boolean = false
 )

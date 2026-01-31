@@ -45,7 +45,13 @@ class MessageViewModel : ViewModel() {
     fun sendMessage(chatId: String, text: String) {
         if (text.isBlank()) return
         val mentions = extractMentions(text)
-        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text, chatId, mentions)
+        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, text, chatId, mentions, null)
+    }
+
+    fun sendImage(chatId: String, imageBase64: String) {
+        val trimmed = imageBase64.trim()
+        if (trimmed.isBlank()) return
+        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, "", chatId, emptyList(), trimmed)
     }
 
     fun refreshHistory() {
@@ -57,6 +63,7 @@ class MessageViewModel : ViewModel() {
             ?.mapNotNull { element -> element.takeIf { it.isJsonPrimitive }?.asString }
             .orEmpty()
         val messageText = payload.get("text")?.asString.orEmpty()
+        val imageBase64 = payload.get("imageBase64")?.asString
         val mentions = if (mentionsFromPayload.isNotEmpty()) {
             mentionsFromPayload
         } else {
@@ -68,6 +75,7 @@ class MessageViewModel : ViewModel() {
             chatId = payload.get("chatId")?.asString ?: PubNubManager.CHANNEL_NAME,
             timestampEpochMillis = payload.get("timestampEpochMillis")?.asLong
                 ?: System.currentTimeMillis(),
+            imageBase64 = imageBase64,
             mentions = mentions,
             isHistory = isHistory
         )

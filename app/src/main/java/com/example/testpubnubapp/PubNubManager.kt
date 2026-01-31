@@ -62,12 +62,19 @@ class PubNubManager(
         )
     }
 
-    fun publish(channel: String, text: String, chatId: String, mentions: List<String>) {
+    fun publish(
+        channel: String,
+        text: String,
+        chatId: String,
+        mentions: List<String>,
+        imageBase64: String?
+    ) {
         val payload = JsonObject().apply {
             addProperty("text", text)
             addProperty("sender", username)
             addProperty("chatId", chatId)
             addProperty("timestampEpochMillis", System.currentTimeMillis())
+            imageBase64?.let { addProperty("imageBase64", it) }
             if (mentions.isNotEmpty()) {
                 add("mentions", JsonArray().apply { mentions.forEach { add(it) } })
             }

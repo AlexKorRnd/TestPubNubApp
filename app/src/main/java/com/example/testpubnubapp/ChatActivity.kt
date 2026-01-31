@@ -28,6 +28,7 @@ class ChatActivity : ComponentActivity() {
                 MainScaffold(
                     uiState = uiState,
                     onSend = viewModel::sendMessage,
+                    onSendImage = viewModel::sendImage,
                     onMarkChatRead = viewModel::markChatRead
                 )
             }
