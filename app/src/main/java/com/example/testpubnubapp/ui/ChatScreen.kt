@@ -37,6 +37,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 
 @Composable
 fun ChatScreen(
@@ -48,6 +52,15 @@ fun ChatScreen(
     var messageText by remember { mutableStateOf("") }
     val messageListState = rememberLazyListState()
     val visibleMessages = uiState.messages.filter { it.chatId == chatId }
+    val knownUsers = buildSet {
+        uiState.currentUserId?.takeIf { it.isNotBlank() }?.let { add(it) }
+        uiState.onlineUsers.forEach { add(it.id) }
+        uiState.messages.forEach { message ->
+            if (message.sender.isNotBlank()) {
+                add(message.sender)
+            }
+        }
+    }
 
     LaunchedEffect(chatId, uiState.messages.size) {
         onChatOpened(chatId)
@@ -110,7 +123,12 @@ fun ChatScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text(text = message.text)
+                                val messageTextStyled = if (isCurrentUser) {
+                                    highlightMentions(message.text, knownUsers)
+                                } else {
+                                    buildAnnotatedString { append(message.text) }
+                                }
+                                Text(text = messageTextStyled)
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -186,5 +204,30 @@ fun ChatScreen(
                 )
             }
         }
+    }
+}
+
+private val MentionHighlightColor = Color(0xFF1E88E5)
+
+private fun highlightMentions(text: String, knownUsers: Set<String>) = buildAnnotatedString {
+    val regex = Regex("@([A-Za-z0-9_.-]+)")
+    var lastIndex = 0
+    regex.findAll(text).forEach { match ->
+        val range = match.range
+        if (range.first > lastIndex) {
+            append(text.substring(lastIndex, range.first))
+        }
+        val username = match.groupValues[1]
+        if (knownUsers.contains(username)) {
+            withStyle(style = SpanStyle(color = MentionHighlightColor)) {
+                append(match.value)
+            }
+        } else {
+            append(match.value)
+        }
+        lastIndex = range.last + 1
+    }
+    if (lastIndex < text.length) {
+        append(text.substring(lastIndex))
     }
 }
