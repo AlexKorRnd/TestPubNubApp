@@ -1,11 +1,13 @@
 package com.example.testpubnubapp.ui
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,6 +17,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -34,7 +38,6 @@ import com.example.testpubnubapp.models.ChatMessage
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.ui.graphics.Color
@@ -51,6 +54,7 @@ fun ChatScreen(
     initialMessageTimestamp: Long?
 ) {
     var messageText by remember { mutableStateOf("") }
+    var isMediaMenuExpanded by remember { mutableStateOf(false) }
     val messageListState = rememberLazyListState()
     val visibleMessages = uiState.messages.filter { it.chatId == chatId }
     val knownUsers = buildSet {
@@ -172,43 +176,63 @@ fun ChatScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /* TODO: attach files */ }) {
-                Icon(
-                    imageVector = Icons.Default.AttachFile,
-                    contentDescription = "Attach file"
-                )
-            }
-            IconButton(onClick = { /* TODO: attach photo */ }) {
-                Icon(
-                    imageVector = Icons.Default.PhotoCamera,
-                    contentDescription = "Attach photo"
-                )
+            Box {
+                IconButton(onClick = { isMediaMenuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.PhotoCamera,
+                        contentDescription = "Add photo"
+                    )
+                }
+                DropdownMenu(
+                    expanded = isMediaMenuExpanded,
+                    onDismissRequest = { isMediaMenuExpanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Сделать фото") },
+                        onClick = {
+                            isMediaMenuExpanded = false
+                            /* TODO: open camera */
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Выбрать из галереи") },
+                        onClick = {
+                            isMediaMenuExpanded = false
+                            /* TODO: open gallery */
+                        }
+                    )
+                }
             }
             TextField(
                 value = messageText,
                 onValueChange = { messageText = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 72.dp),
                 placeholder = { Text("Напишите сообщение…") },
-                singleLine = true,
+                minLines = 2,
+                maxLines = 4,
                 shape = RoundedCornerShape(24.dp),
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            onSend(chatId, messageText)
+                            messageText = ""
+                        },
+                        enabled = messageText.isNotBlank()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Send message"
+                        )
+                    }
+                },
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                     disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             )
-            IconButton(
-                onClick = {
-                    onSend(chatId, messageText)
-                    messageText = ""
-                },
-                enabled = messageText.isNotBlank()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "Send message"
-                )
-            }
         }
     }
 }
