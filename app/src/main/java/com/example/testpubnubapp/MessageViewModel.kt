@@ -1,5 +1,6 @@
 package com.example.testpubnubapp
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testpubnubapp.models.ChatMessage
@@ -51,7 +52,12 @@ class MessageViewModel : ViewModel() {
     fun sendImage(chatId: String, imageBase64: String) {
         val trimmed = imageBase64.trim()
         if (trimmed.isBlank()) return
-        pubNubManager?.publish(PubNubManager.CHANNEL_NAME, "", chatId, emptyList(), trimmed)
+        val manager = pubNubManager
+        if (manager == null) {
+            Log.e("MessageViewModel", "sendImage failed: PubNubManager not initialized")
+            return
+        }
+        manager.publish(PubNubManager.CHANNEL_NAME, "", chatId, emptyList(), trimmed)
     }
 
     fun refreshHistory() {

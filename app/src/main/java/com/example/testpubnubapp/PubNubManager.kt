@@ -1,5 +1,6 @@
 package com.example.testpubnubapp
 
+import android.util.Log
 import com.google.gson.JsonArray
 import com.google.gson.JsonObject
 import com.pubnub.api.PubNub
@@ -85,6 +86,7 @@ class PubNubManager(
             message = payload
         ).async { result ->
             if (result.isFailure) {
+                Log.e("PubNubManager", "Publish error", result.exceptionOrNull())
                 onError("Publish error: ${result.exceptionOrNull()}")
             }
         }
