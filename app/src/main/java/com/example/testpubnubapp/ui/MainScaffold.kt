@@ -25,7 +25,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -198,10 +197,23 @@ fun MainScaffold(
                 )
             }
             composable(ROUTE_MENTIONS) {
-                PlaceholderScreen(
-                    title = "Mentions",
-                    description = "Mentions will appear here."
-                )
+                val currentUserId = uiState.currentUserId
+                val mentions = if (currentUserId.isNullOrBlank()) {
+                    emptyList()
+                } else {
+                    uiState.messages
+                        .filter { message -> message.mentions.contains(currentUserId) }
+                        .sortedByDescending { it.timestampEpochMillis }
+                        .map { message ->
+                            MentionItem(
+                                sender = message.sender,
+                                chatName = displayChatName(message.chatId),
+                                text = message.text,
+                                timestampEpochMillis = message.timestampEpochMillis
+                            )
+                        }
+                }
+                MentionsScreen(mentions = mentions)
             }
             composable(ROUTE_PROFILE) {
                 PlaceholderScreen(
@@ -239,18 +251,12 @@ fun MainScaffold(
     }
 }
 
-@Composable
-private fun PlaceholderScreen(title: String, description: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(text = title, style = MaterialTheme.typography.headlineSmall)
-            Text(text = description, textAlign = TextAlign.Center)
-        }
+private fun displayChatName(chatId: String): String {
+    return when {
+        chatId == PubNubManager.CHANNEL_NAME -> "#${PubNubManager.CHANNEL_NAME}"
+        chatId.startsWith("dm:") -> "DM · ${chatId.removePrefix("dm:")}"
+        chatId.startsWith("group:") -> chatId.removePrefix("group:")
+        else -> chatId
     }
 }
 

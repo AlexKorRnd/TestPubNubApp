@@ -37,11 +37,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Send
-import java.time.Instant
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 fun ChatScreen(
@@ -191,41 +186,5 @@ fun ChatScreen(
                 )
             }
         }
-    }
-}
-
-private fun ChatMessage.toLocalDate(): LocalDate {
-    val zoneId = ZoneId.systemDefault()
-    return Instant.ofEpochMilli(timestampEpochMillis).atZone(zoneId).toLocalDate()
-}
-
-private fun formatMessageTimestamp(epochMillis: Long): String {
-    val zoneId = ZoneId.systemDefault()
-    val locale = Locale.getDefault()
-    val messageDateTime = Instant.ofEpochMilli(epochMillis).atZone(zoneId)
-    val messageDate = messageDateTime.toLocalDate()
-    val today = LocalDate.now(zoneId)
-    return when {
-        messageDate == today -> messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
-        messageDate == today.minusDays(1) -> {
-            val time = messageDateTime.format(DateTimeFormatter.ofPattern("HH:mm", locale))
-            "Вчера, $time"
-        }
-        messageDate.year == today.year -> messageDateTime.format(
-            DateTimeFormatter.ofPattern("d MMM, HH:mm", locale)
-        )
-        else -> messageDateTime.format(DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", locale))
-    }
-}
-
-private fun formatDateSeparator(date: LocalDate): String {
-    val zoneId = ZoneId.systemDefault()
-    val locale = Locale.getDefault()
-    val today = LocalDate.now(zoneId)
-    return when {
-        date == today -> "Сегодня"
-        date == today.minusDays(1) -> "Вчера"
-        date.year == today.year -> date.format(DateTimeFormatter.ofPattern("d MMMM", locale))
-        else -> date.format(DateTimeFormatter.ofPattern("d MMMM yyyy", locale))
     }
 }
