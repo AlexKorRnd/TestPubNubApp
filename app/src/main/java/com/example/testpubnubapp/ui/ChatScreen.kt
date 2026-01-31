@@ -53,6 +53,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import com.example.testpubnubapp.ChatUiState
 import java.io.ByteArrayOutputStream
@@ -111,6 +112,17 @@ fun ChatScreen(
         if (uri != null) {
             encodeImageFromUri(context, uri)?.let { encoded ->
                 onSendImage(chatId, encoded)
+            }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            val uri = createImageUri(context)
+            cameraImageUri = uri
+            if (uri != null) {
+                cameraLauncher.launch(uri)
             }
         }
     }
@@ -241,10 +253,19 @@ fun ChatScreen(
                         text = { Text("Сделать фото") },
                         onClick = {
                             isMediaMenuExpanded = false
-                            val uri = createImageUri(context)
-                            cameraImageUri = uri
-                            if (uri != null) {
-                                cameraLauncher.launch(uri)
+                            val permission = android.Manifest.permission.CAMERA
+                            val permissionGranted = ContextCompat.checkSelfPermission(
+                                context,
+                                permission
+                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                            if (permissionGranted) {
+                                val uri = createImageUri(context)
+                                cameraImageUri = uri
+                                if (uri != null) {
+                                    cameraLauncher.launch(uri)
+                                }
+                            } else {
+                                cameraPermissionLauncher.launch(permission)
                             }
                         }
                     )
